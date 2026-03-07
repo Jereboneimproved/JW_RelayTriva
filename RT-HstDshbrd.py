@@ -44,14 +44,16 @@ with st.sidebar:
 st.title("🛡️ Zion Game: Host Command Center")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-@st.fragment(run_every=15) # Increased to 15 seconds to save quota
+# Increased to 15 seconds to avoid the 429 Quota Error
+@st.fragment(run_every=15)
 def live_dashboard():
     try:
-        # 1. Pull EVERYTHING in one go at the start
-        # This counts as only 2-3 requests total instead of 10+
+        # --- SINGLE TRIP DATA PULL ---
+        # We fetch all necessary data in one block to minimize requests
         scores_df = conn.read(worksheet="Scores", ttl=0)
         subs_df = conn.read(worksheet="Submissions", ttl=0)
-        
+        master_df = conn.read(worksheet="Trivia_Master", ttl=0)
+
         # --- LIVE LEADERBOARD ---
         st.subheader("📊 Live Team Standings")
         if not scores_df.empty:
@@ -59,6 +61,8 @@ def live_dashboard():
                          color=scores_df.columns[1], color_continuous_scale='Viridis')
             fig.update_layout(template="plotly_dark", height=300)
             st.plotly_chart(fig, key="leaderboard_chart")
+        else:
+            st.warning("⚠️ No data in 'Scores' tab. Please add Team names to the sheet.")
 
         # --- LIVE PLAYER FEED ---
         st.divider()
@@ -69,20 +73,52 @@ def live_dashboard():
             st.info("Waiting for players to buzz in...")
 
         # --- SCORING STATION ---
-        # (Uses the scores_df we already downloaded above)
         st.divider()
         st.subheader("🏆 Scoring Station")
-        col_s1, col_s2, col_s3 = st.columns(3)
-        with col_s1:
-            target_team = st.selectbox("Select Team", scores_df.iloc[:, 0].unique(), key="score_team_select")
-        # ... rest of your scoring station code ...
+        if not scores_df.empty:
+            col_s1, col_s2, col_s3 = st.columns(3)
+            with col_s1:
+                target_team = st.selectbox("Select Team", scores_df.iloc[:, 0].unique(), key="score_team_select")
+            with col_s2:
+                points_to_add = st.number_input("Points", value=100, step=50, key="score_input")
+            with col_s3:
+                st.write(" ") 
+                if st.button("➕ Award Points", use_container_width=True):
+                    # Update the local dataframe and push back to Google
+                    scores_df.loc[scores_df.iloc[:, 0] == target_team, scores_df.columns[1]] += points_to_add
+                    conn.update(worksheet="Scores", data=scores_df)
+                    st.toast(f"Awarded {points_to_add} to {target_team}!")
+                    st.rerun()
+
+        # --- ACTIVE QUESTION (Moved inside fragment for sync) ---
+        st.divider()
+        col_q1, col_q2 = st.columns([2, 1])
+        with col_q1:
+            st.subheader("🎯 Active Question")
+            if not master_df.empty:
+                idx = st.session_state.q_index
+                if idx < len(master_df):
+                    q_text = master_df.iloc[idx, 1] 
+                    a_text = master_df.iloc[idx, 2]
+                    st.info(f"**Question {idx + 1}:** {q_text}")
+                    st.success(f"**Correct Answer:** {a_text}")
+                else:
+                    st.success("🎉 All questions completed!")
+        with col_q2:
+            st.subheader("🕹️ Controls")
+            if st.button("⏭️ Next Question", use_container_width=True):
+                st.session_state.q_index += 1
+                state_update = pd.DataFrame([[st.session_state.q_index]], columns=["CurrentIndex"])
+                conn.update(worksheet="Game_State", data=state_update)
+                st.rerun()
 
     except Exception as e:
         if "429" in str(e):
-            st.error("Google is tired! Waiting 30 seconds to reset quota...")
+            st.error("Google's Quota exceeded. The dashboard will resume in 30 seconds.")
         else:
-            st.error(f"Dashboard Error: {e}")
+            st.error(f"Dashboard Sync Error: {e}")
 
+# Call the dashboard
 live_dashboard()
 
 # --- 5. QUESTION MANAGEMENT ---
