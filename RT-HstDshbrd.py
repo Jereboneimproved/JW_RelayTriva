@@ -18,8 +18,8 @@ def load_master_questions():
     return df.to_dict('records')
 
 # --- USAGE ---
-# questions = load_master_questions()
-# first_q = questions[0]['Question']
+questions = load_master_questions()
+first_q = questions[0]['Question']
 
 # --- 1. THE DATA SOURCE (QUESTION PACKS) ---
 # In the future, this pulls from Google Sheets.
