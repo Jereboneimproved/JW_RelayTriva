@@ -1,5 +1,9 @@
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
+import pandas as pd
+import plotly.express as px
+import time
+import random  
 
 def load_master_questions():
     # 1. Establish connection to your Google Sheet
@@ -16,10 +20,6 @@ def load_master_questions():
 # --- USAGE ---
 # questions = load_master_questions()
 # first_q = questions[0]['Question']
-import streamlit as st
-import pandas as pd
-import plotly.express as px
-import time
 
 # --- 1. THE DATA SOURCE (QUESTION PACKS) ---
 # In the future, this pulls from Google Sheets.
