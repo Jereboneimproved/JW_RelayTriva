@@ -28,30 +28,30 @@ player_name = st.text_input("Enter Your Name", key="p_name")
 selected_team = st.radio("Select Your Team", ["Team A", "Team B"], horizontal=True)
 player_answer = st.text_input("Type your answer here...", key="p_ans")
 
-# 4. DIRECT ROW APPEND (Prevents Overwriting & Schema Errors)
+# 4. DIRECT ROW APPEND (The Ultimate Fix)
 if st.button("SUBMIT ANSWER", use_container_width=True):
     if player_name and player_answer:
         try:
-            # 1. Access the underlying gspread client directly
-            client = conn.client
+            # 1. Get the RAW gspread client from the connection
+            # We use ._instance to get to the underlying 'open' method
+            raw_client = conn._instance
             
-            # 2. Open the specific worksheet
-            # Make sure your spreadsheet name matches exactly (e.g., "Trivia_Master")
-            sh = client.open("Trivia_Master") 
+            # 2. Open your specific spreadsheet and tab
+            # Ensure "Trivia_Master" is the exact name of your Google Sheet
+            sh = raw_client.open("Trivia_Master") 
             worksheet = sh.worksheet("Submissions")
             
-            # 3. Create a simple list of your data
+            # 3. Create the row data
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
             row_to_add = [timestamp, player_name, selected_team, player_answer, ""]
             
-            # 4. Append the row directly to the bottom
+            # 4. Direct Append (This avoids all "overwriting" issues)
             worksheet.append_row(row_to_add)
             
             st.success(f"Sent! Good luck, {player_name}.")
             st.balloons()
             
         except Exception as e:
-            # This will show you exactly why it's failing if it happens again
             st.error(f"Submission Error: {e}")
     else:
         st.warning("Please fill out both name and answer!")
