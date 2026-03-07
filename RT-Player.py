@@ -28,20 +28,31 @@ player_name = st.text_input("Enter Your Name", key="p_name")
 selected_team = st.radio("Select Your Team", ["Team A", "Team B"], horizontal=True)
 player_answer = st.text_input("Type your answer here...", key="p_ans")
 
-# 4. THE ULTIMATE APPEND FIX (Using run_script)
+# 4. THE "PULL-ADD-PUSH" STACKING LOGIC
 if st.button("SUBMIT ANSWER", use_container_width=True):
     if player_name and player_answer:
         try:
-            # 1. Define the append operation
-            def append_player_row(client):
-                # Ensure "Trivia_Master" matches your Google Sheet name exactly
-                sh = client.open("Trivia_Master")
-                ws = sh.worksheet("Submissions")
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-                ws.append_row([timestamp, player_name, selected_team, player_answer, ""])
-
-            # 2. Tell the connection to run this specific script
-            conn.run_script(append_player_row)
+            # 1. Pull the absolute latest data from the sheet
+            # This ensures we see Team A's row before we add Team B's
+            existing_data = conn.read(worksheet="Submissions", ttl=0) 
+            
+            # 2. Create your new row
+            new_row = pd.DataFrame([{
+                "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "Player": player_name,
+                "Team": selected_team,
+                "Answer": player_answer,
+                "IsCorrect": "" 
+            }])
+            
+            # 3. Stack them (New row goes at the bottom)
+            if existing_data is not None and not existing_data.empty:
+                updated_df = pd.concat([existing_data, new_row], ignore_index=True)
+            else:
+                updated_df = new_row
+            
+            # 4. Push the whole updated list back
+            conn.update(worksheet="Submissions", data=updated_df)
             
             st.success(f"Sent! Good luck, {player_name}.")
             st.balloons()
@@ -49,4 +60,4 @@ if st.button("SUBMIT ANSWER", use_container_width=True):
         except Exception as e:
             st.error(f"Submission Error: {e}")
     else:
-        st.warning("Please enter your name and an answer!")
+        st.warning("Please fill out both name and answer!")
