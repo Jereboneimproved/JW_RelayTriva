@@ -8,7 +8,7 @@ from datetime import datetime
 # 1. PAGE CONFIG
 st.set_page_config(page_title="Zion Game: Host", layout="wide")
 
-# 2. INITIALIZE SESSION STATE (Prevents errors when the app first loads)
+# 2. INITIALIZE SESSION STATE
 if 'q_index' not in st.session_state:
     st.session_state.q_index = 0
 
@@ -34,10 +34,8 @@ with st.sidebar:
     st.divider()
     if st.button("🗑️ Reset Game & Submissions"):
         conn = st.connection("gsheets", type=GSheetsConnection)
-        # Reset the Sheet index to 0
         state_update = pd.DataFrame([[0]], columns=["CurrentIndex"])
         conn.update(worksheet="Game_State", data=state_update)
-        # Clear submissions
         empty_df = pd.DataFrame(columns=["Timestamp", "Player", "Team", "Answer"])
         conn.create(worksheet="Submissions", data=empty_df)
         st.session_state.q_index = 0
@@ -49,16 +47,18 @@ st.title("🛡️ Zion Game: Host Command Center")
 
 @st.fragment(run_every=5)
 def live_dashboard():
-    # --- LIVE LEADERBOARD ---
+    conn = st.connection("gsheets", type=GSheetsConnection)
+
+    # --- LIVE LEADERBOARD (Reading from 'Scores' tab) ---
     st.subheader("📊 Live Team Standings")
-    team_data = pd.DataFrame({
-        'Team': [f"Team {chr(65+i)}" for i in range(num_teams)],
-        'Score': [random.randint(500, 5000) for _ in range(num_teams)]
-    })
-    fig = px.bar(team_data, x='Team', y='Score', color='Score', 
-                 color_continuous_scale='Viridis', text_auto='.2s')
-    fig.update_layout(template="plotly_dark", height=350)
-    st.plotly_chart(fig, key="leaderboard_chart")
+    try:
+        live_scores = conn.read(worksheet="Scores")
+        fig = px.bar(live_scores, x='Team', y='TotalPoints', color='TotalPoints', 
+                     color_continuous_scale='Viridis', text_auto='.2s')
+        fig.update_layout(template="plotly_dark", height=350)
+        st.plotly_chart(fig, key="leaderboard_chart")
+    except:
+        st.warning("Please create a 'Scores' tab in your Google Sheet.")
 
     # --- LIVE PLAYER FEED ---
     st.divider()
@@ -68,6 +68,28 @@ def live_dashboard():
         st.table(submissions.tail(5))
     else:
         st.info("Waiting for players...")
+
+    # --- SCORING STATION (Integrated here) ---
+    st.divider()
+    st.subheader("🏆 Scoring Station")
+    try:
+        scores_df = conn.read(worksheet="Scores")
+        col_s1, col_s2, col_s3 = st.columns(3)
+        
+        with col_s1:
+            target_team = st.selectbox("Select Team to Award", scores_df['Team'].unique(), key="score_team_select")
+        with col_s2:
+            points_to_add = st.number_input("Points", value=100, step=50, key="score_input")
+        with col_s3:
+            st.write(" ") # Alignment space
+            if st.button("➕ Award Points", use_container_width=True):
+                # Add points to the selected team
+                scores_df.loc[scores_df['Team'] == target_team, 'TotalPoints'] += points_to_add
+                conn.update(worksheet="Scores", data=scores_df)
+                st.toast(f"Awarded {points_to_add} to {target_team}!")
+                st.rerun()
+    except:
+        st.error("Error connecting to Scoring tab.")
 
 live_dashboard()
 
@@ -80,7 +102,6 @@ with col1:
     st.subheader("🎯 Active Question")
     try:
         questions = load_master_questions()
-        # Use the session state to show the current question
         idx = st.session_state.q_index
         if idx < len(questions):
             curr_q = questions[idx] 
@@ -94,9 +115,7 @@ with col1:
 with col2:
     st.subheader("🕹️ Controls")
     if st.button("⏭️ Next Question", use_container_width=True):
-        # Update local index
         st.session_state.q_index += 1
-        # Update Google Sheet for players
         state_update = pd.DataFrame([[st.session_state.q_index]], columns=["CurrentIndex"])
         conn.update(worksheet="Game_State", data=state_update)
         st.rerun()
