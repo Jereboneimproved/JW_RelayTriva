@@ -28,10 +28,10 @@ player_name = st.text_input("Enter Your Name", key="p_name")
 selected_team = st.radio("Select Your Team", ["Team A", "Team B"], horizontal=True)
 player_answer = st.text_input("Type your answer here...", key="p_ans")
 
-# 4. STACKING SUBMISSION LOGIC
+# 4. APPEND-ONLY SUBMISSION LOGIC
 if st.button("SUBMIT ANSWER", use_container_width=True):
     if player_name and player_answer:
-        # Create the new row as a DataFrame
+        # Create just the single new row
         new_entry = pd.DataFrame([{
             "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "Player": player_name,
@@ -41,21 +41,16 @@ if st.button("SUBMIT ANSWER", use_container_width=True):
         }])
         
         try:
-            # PULL: Get everything currently in the Submissions tab
-            existing_subs = conn.read(worksheet="Submissions")
-            
-            # MERGE: Add the new answer to the existing list
-            # This is what stops Team B from deleting Team A
-            updated_df = pd.concat([existing_subs, new_entry], ignore_index=True)
-            
-            # PUSH: Send the full list back to Google Sheets
-            conn.update(worksheet="Submissions", data=updated_df)
+            # The 'append' method is much safer for multiple users
+            conn.create(
+                worksheet="Submissions", 
+                data=new_entry, 
+                if_exists="append"
+            )
             
             st.success(f"Sent! Good luck, {player_name}.")
             st.balloons()
-        except:
-            # Fallback if the sheet is empty
-            conn.update(worksheet="Submissions", data=new_entry)
-            st.success("First submission recorded!")
+        except Exception as e:
+            st.error("Submission failed. Please try again.")
     else:
         st.warning("Please fill out both name and answer!")
