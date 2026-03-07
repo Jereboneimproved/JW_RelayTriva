@@ -10,46 +10,38 @@ st.set_page_config(page_title="Zion Game: Host", layout="wide")
 if 'q_index' not in st.session_state:
     st.session_state.q_index = 0
 
-# 3. FUNCTIONS
-def load_data(conn, sheet_name):
-    try:
-        df = conn.read(worksheet=sheet_name)
-        return df
-    except Exception:
-        return None
-
-# 4. SIDEBAR CONFIG (FULL RESTORATION)
+# 3. SIDEBAR CONFIG (EXACT ORIGINAL MATCH)
 with st.sidebar:
     st.header("Event Configuration")
     
-    # Restoring the team slider
     num_teams = st.slider("Number of Teams", 1, 15, 2)
+    max_players = st.slider("Max Players per Team", 1, 50, 10) # Restored
     
     st.divider()
     
-    # Restoring the Reset functionality
+    if st.button("🚀 START LIVE SESSION", use_container_width=True): # Restored
+        st.balloons()
+        st.success("Session Started!")
+
+    st.divider()
+    
     if st.button("🗑️ Reset Game & Submissions", use_container_width=True):
         conn = st.connection("gsheets", type=GSheetsConnection)
-        
-        # Reset current index to 0
+        # Reset Game State
         state_update = pd.DataFrame([[0]], columns=["CurrentIndex"])
         conn.update(worksheet="Game_State", data=state_update)
-        
-        # Reset Scores to 0 for all teams
-        # Assumes Column A is 'Team' and Column B is 'TotalPoints'
+        # Reset Scores to 0
         scores_df = conn.read(worksheet="Scores")
         scores_df.iloc[:, 1] = 0 
         conn.update(worksheet="Scores", data=scores_df)
-        
-        # Clear submissions
+        # Clear Submissions
         empty_df = pd.DataFrame(columns=["Timestamp", "Player", "Team", "Answer", "IsCorrect"])
         conn.create(worksheet="Submissions", data=empty_df)
         
         st.session_state.q_index = 0
-        st.success("Game, Scores, and Submissions Reset!")
         st.rerun()
 
-# 5. MAIN UI
+# 4. MAIN UI
 st.title("🛡️ Zion Game: Host Command Center")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -57,26 +49,33 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 def live_dashboard():
     # --- LIVE LEADERBOARD ---
     st.subheader("📊 Live Team Standings")
-    scores_df = load_data(conn, "Scores")
-    if scores_df is not None:
+    try:
+        scores_df = conn.read(worksheet="Scores")
+        # Column A (0) is Team, Column B (1) is TotalPoints
         fig = px.bar(scores_df, x=scores_df.columns[0], y=scores_df.columns[1], 
                      color=scores_df.columns[1], color_continuous_scale='Viridis')
         fig.update_layout(template="plotly_dark", height=300)
         st.plotly_chart(fig, key="leaderboard_chart")
+    except:
+        st.warning("⚠️ Checking 'Scores' tab...")
 
     # --- LIVE PLAYER FEED ---
     st.divider()
     st.subheader("📥 Live Player Feed")
-    subs_df = load_data(conn, "Submissions")
-    if subs_df is not None and not subs_df.empty:
-        st.table(subs_df.tail(5))
-    else:
-        st.info("Waiting for players to buzz in...")
+    try:
+        subs_df = conn.read(worksheet="Submissions")
+        if not subs_df.empty:
+            st.table(subs_df.tail(5))
+        else:
+            st.info("Waiting for players to buzz in...")
+    except:
+        st.info("No submissions found.")
 
     # --- SCORING STATION ---
     st.divider()
     st.subheader("🏆 Scoring Station")
-    if scores_df is not None:
+    try:
+        scores_df = conn.read(worksheet="Scores")
         col_s1, col_s2, col_s3 = st.columns(3)
         with col_s1:
             target_team = st.selectbox("Select Team", scores_df.iloc[:, 0].unique(), key="score_team_select")
@@ -89,26 +88,31 @@ def live_dashboard():
                 conn.update(worksheet="Scores", data=scores_df)
                 st.toast(f"Awarded {points_to_add} to {target_team}!")
                 st.rerun()
+    except:
+        st.error("Verify 'Scores' tab layout.")
 
 live_dashboard()
 
-# --- 6. QUESTION MANAGEMENT ---
+# --- 5. QUESTION MANAGEMENT (COL C MAPPING) ---
 st.divider()
 col1, col2 = st.columns([2, 1])
 
 with col1:
     st.subheader("🎯 Active Question")
-    master_df = load_data(conn, "Trivia_Master")
-    if master_df is not None:
-        idx = st.session_state.q_index
-        if idx < len(master_df):
-            # Positional mapping: Col B (1) = Question, Col C (2) = Answer
-            q_text = master_df.iloc[idx, 1] 
-            a_text = master_df.iloc[idx, 2]
-            st.info(f"**Question {idx + 1}:** {q_text}")
-            st.success(f"**Correct Answer:** {a_text}")
-        else:
-            st.success("🎉 All questions completed!")
+    try:
+        master_df = conn.read(worksheet="Trivia_Master")
+        if not master_df.empty:
+            idx = st.session_state.q_index
+            if idx < len(master_df):
+                # Mapping confirmed from screenshots: Col B (1) = Question, Col C (2) = Answer
+                q_text = master_df.iloc[idx, 1] 
+                a_text = master_df.iloc[idx, 2]
+                st.info(f"**Question {idx + 1}:** {q_text}")
+                st.success(f"**Correct Answer:** {a_text}")
+            else:
+                st.success("🎉 All questions completed!")
+    except Exception as e:
+        st.error(f"Sheet Error: {e}")
 
 with col2:
     st.subheader("🕹️ Controls")
