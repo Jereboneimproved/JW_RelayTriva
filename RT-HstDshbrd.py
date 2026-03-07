@@ -44,12 +44,11 @@ with st.sidebar:
 st.title("🛡️ Zion Game: Host Command Center")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Increased to 15 seconds to avoid the 429 Quota Error
+# Refresh every 15 seconds to manage Google Quota
 @st.fragment(run_every=15)
 def live_dashboard():
     try:
-        # --- SINGLE TRIP DATA PULL ---
-        # We fetch all necessary data in one block to minimize requests
+        # Pull all data in one trip
         scores_df = conn.read(worksheet="Scores", ttl=0)
         subs_df = conn.read(worksheet="Submissions", ttl=0)
         master_df = conn.read(worksheet="Trivia_Master", ttl=0)
@@ -60,9 +59,7 @@ def live_dashboard():
             fig = px.bar(scores_df, x=scores_df.columns[0], y=scores_df.columns[1], 
                          color=scores_df.columns[1], color_continuous_scale='Viridis')
             fig.update_layout(template="plotly_dark", height=300)
-            st.plotly_chart(fig, key="leaderboard_chart")
-        else:
-            st.warning("⚠️ No data in 'Scores' tab. Please add Team names to the sheet.")
+            st.plotly_chart(fig, key="host_leaderboard_chart") # Added unique key
 
         # --- LIVE PLAYER FEED ---
         st.divider()
@@ -80,17 +77,16 @@ def live_dashboard():
             with col_s1:
                 target_team = st.selectbox("Select Team", scores_df.iloc[:, 0].unique(), key="score_team_select")
             with col_s2:
-                points_to_add = st.number_input("Points", value=100, step=50, key="score_input")
+                points_to_add = st.number_input("Points", value=100, step=50, key="score_points_input")
             with col_s3:
                 st.write(" ") 
-                if st.button("➕ Award Points", use_container_width=True):
-                    # Update the local dataframe and push back to Google
+                if st.button("➕ Award Points", use_container_width=True, key="award_points_btn"):
                     scores_df.loc[scores_df.iloc[:, 0] == target_team, scores_df.columns[1]] += points_to_add
                     conn.update(worksheet="Scores", data=scores_df)
                     st.toast(f"Awarded {points_to_add} to {target_team}!")
                     st.rerun()
 
-        # --- ACTIVE QUESTION (Moved inside fragment for sync) ---
+        # --- QUESTION MANAGEMENT ---
         st.divider()
         col_q1, col_q2 = st.columns([2, 1])
         with col_q1:
@@ -106,7 +102,8 @@ def live_dashboard():
                     st.success("🎉 All questions completed!")
         with col_q2:
             st.subheader("🕹️ Controls")
-            if st.button("⏭️ Next Question", use_container_width=True):
+            # Added a unique key to prevent the DuplicateElementId error
+            if st.button("⏭️ Next Question", use_container_width=True, key="next_q_button_main"):
                 st.session_state.q_index += 1
                 state_update = pd.DataFrame([[st.session_state.q_index]], columns=["CurrentIndex"])
                 conn.update(worksheet="Game_State", data=state_update)
@@ -114,11 +111,11 @@ def live_dashboard():
 
     except Exception as e:
         if "429" in str(e):
-            st.error("Google's Quota exceeded. The dashboard will resume in 30 seconds.")
+            st.error("Google's Quota exceeded. Waiting to reset...")
         else:
-            st.error(f"Dashboard Sync Error: {e}")
+            st.error(f"Sync Error: {e}")
 
-# Call the dashboard
+# Call the fragment
 live_dashboard()
 
 # --- 5. QUESTION MANAGEMENT ---
