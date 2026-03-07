@@ -10,7 +10,25 @@ st.set_page_config(page_title="Zion Game: Host", layout="wide")
 if 'q_index' not in st.session_state:
     st.session_state.q_index = 0
 
-# 3. MAIN UI
+# 3. SIDEBAR CONFIG (RESTORED)
+with st.sidebar:
+    st.header("Event Configuration")
+    num_teams = st.slider("Number of Teams", 1, 15, 2)
+    
+    st.divider()
+    if st.button("🗑️ Reset Game & Submissions"):
+        conn = st.connection("gsheets", type=GSheetsConnection)
+        # Reset current index to 0 in Game_State
+        state_update = pd.DataFrame([[0]], columns=["CurrentIndex"])
+        conn.update(worksheet="Game_State", data=state_update)
+        # Clear the submissions tab
+        empty_df = pd.DataFrame(columns=["Timestamp", "Player", "Team", "Answer", "IsCorrect"])
+        conn.create(worksheet="Submissions", data=empty_df)
+        st.session_state.q_index = 0
+        st.success("Game and scores have been reset!")
+        st.rerun()
+
+# 4. MAIN UI
 st.title("🛡️ Zion Game: Host Command Center")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -20,7 +38,7 @@ def live_dashboard():
     st.subheader("📊 Live Team Standings")
     try:
         scores_df = conn.read(worksheet="Scores")
-        # Map Team to Col A and Points to Col B
+        # Pulling Team from Col A (0) and Points from Col B (1)
         fig = px.bar(scores_df, x=scores_df.columns[0], y=scores_df.columns[1], 
                      color=scores_df.columns[1], color_continuous_scale='Viridis')
         fig.update_layout(template="plotly_dark", height=300)
@@ -36,7 +54,7 @@ def live_dashboard():
         if not subs_df.empty:
             st.table(subs_df.tail(5))
         else:
-            st.info("Waiting for players...")
+            st.info("Waiting for players to buzz in...")
     except:
         st.info("No submissions yet.")
 
@@ -61,9 +79,10 @@ def live_dashboard():
     except:
         st.error("Verify your 'Scores' tab has Team and TotalPoints columns.")
 
+# Call the fragmented dashboard
 live_dashboard()
 
-# --- 6. QUESTION MANAGEMENT (POSITIONS MAPPED TO YOUR SCREENSHOT) ---
+# --- 5. QUESTION MANAGEMENT ---
 st.divider()
 col1, col2 = st.columns([2, 1])
 
@@ -74,9 +93,7 @@ with col1:
         if not master_df.empty:
             idx = st.session_state.q_index
             if idx < len(master_df):
-                # POSITIONAL MAPPING:
-                # master_df.iloc[row, column_index]
-                # Column A = 0 (ID), Column B = 1 (Question), Column C = 2 (Answer)
+                # Column B = Index 1 (Question), Column C = Index 2 (Answer)
                 q_text = master_df.iloc[idx, 1] 
                 a_text = master_df.iloc[idx, 2]
                 
@@ -91,7 +108,9 @@ with col2:
     st.subheader("🕹️ Controls")
     if st.button("⏭️ Next Question", use_container_width=True):
         st.session_state.q_index += 1
-        # Sync with Player app via Game_State tab
         state_update = pd.DataFrame([[st.session_state.q_index]], columns=["CurrentIndex"])
         conn.update(worksheet="Game_State", data=state_update)
         st.rerun()
+
+    if st.button("⏹️ End Game", use_container_width=True):
+        st.warning("Game Over screen triggered.")
