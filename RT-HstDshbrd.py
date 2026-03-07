@@ -10,16 +10,15 @@ st.set_page_config(page_title="Zion Game: Host", layout="wide")
 if 'q_index' not in st.session_state:
     st.session_state.q_index = 0
 
-# 3. SIDEBAR CONFIG (EXACT ORIGINAL MATCH)
+# 3. SIDEBAR CONFIG
 with st.sidebar:
     st.header("Event Configuration")
-    
     num_teams = st.slider("Number of Teams", 1, 15, 2)
-    max_players = st.slider("Max Players per Team", 1, 50, 10) # Restored
+    max_players = st.slider("Max Players per Team", 1, 50, 10) 
     
     st.divider()
     
-    if st.button("🚀 START LIVE SESSION", use_container_width=True): # Restored
+    if st.button("🚀 START LIVE SESSION", use_container_width=True):
         st.balloons()
         st.success("Session Started!")
 
@@ -31,12 +30,12 @@ with st.sidebar:
         state_update = pd.DataFrame([[0]], columns=["CurrentIndex"])
         conn.update(worksheet="Game_State", data=state_update)
         # Reset Scores to 0
-        scores_df = conn.read(worksheet="Scores")
+        scores_df = conn.read(worksheet="Scores", ttl=0)
         scores_df.iloc[:, 1] = 0 
         conn.update(worksheet="Scores", data=scores_df)
-        # Clear Submissions
+        # Clear Submissions (Keep Headers)
         empty_df = pd.DataFrame(columns=["Timestamp", "Player", "Team", "Answer", "IsCorrect"])
-        conn.create(worksheet="Submissions", data=empty_df)
+        conn.update(worksheet="Submissions", data=empty_df) # Changed create to update
         
         st.session_state.q_index = 0
         st.rerun()
@@ -45,13 +44,14 @@ with st.sidebar:
 st.title("🛡️ Zion Game: Host Command Center")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
+# The fragment runs every 5 seconds to pull new data
 @st.fragment(run_every=5)
 def live_dashboard():
     # --- LIVE LEADERBOARD ---
     st.subheader("📊 Live Team Standings")
     try:
-        scores_df = conn.read(worksheet="Scores")
-        # Column A (0) is Team, Column B (1) is TotalPoints
+        # Added ttl=0 to see live scores immediately
+        scores_df = conn.read(worksheet="Scores", ttl=0)
         fig = px.bar(scores_df, x=scores_df.columns[0], y=scores_df.columns[1], 
                      color=scores_df.columns[1], color_continuous_scale='Viridis')
         fig.update_layout(template="plotly_dark", height=300)
@@ -63,9 +63,11 @@ def live_dashboard():
     st.divider()
     st.subheader("📥 Live Player Feed")
     try:
-        subs_df = conn.read(worksheet="Submissions")
+        # Added ttl=0 so Jeremiah and Williams appear instantly
+        subs_df = conn.read(worksheet="Submissions", ttl=0)
         if not subs_df.empty:
-            st.table(subs_df.tail(5))
+            # Shows newest answers at the top
+            st.table(subs_df.tail(10)) 
         else:
             st.info("Waiting for players to buzz in...")
     except:
@@ -75,7 +77,7 @@ def live_dashboard():
     st.divider()
     st.subheader("🏆 Scoring Station")
     try:
-        scores_df = conn.read(worksheet="Scores")
+        scores_df = conn.read(worksheet="Scores", ttl=0)
         col_s1, col_s2, col_s3 = st.columns(3)
         with col_s1:
             target_team = st.selectbox("Select Team", scores_df.iloc[:, 0].unique(), key="score_team_select")
@@ -93,18 +95,18 @@ def live_dashboard():
 
 live_dashboard()
 
-# --- 5. QUESTION MANAGEMENT (COL C MAPPING) ---
+# --- 5. QUESTION MANAGEMENT ---
 st.divider()
 col1, col2 = st.columns([2, 1])
 
 with col1:
     st.subheader("🎯 Active Question")
     try:
-        master_df = conn.read(worksheet="Trivia_Master")
+        # Added ttl=0 for master sync
+        master_df = conn.read(worksheet="Trivia_Master", ttl=0)
         if not master_df.empty:
             idx = st.session_state.q_index
             if idx < len(master_df):
-                # Mapping confirmed from screenshots: Col B (1) = Question, Col C (2) = Answer
                 q_text = master_df.iloc[idx, 1] 
                 a_text = master_df.iloc[idx, 2]
                 st.info(f"**Question {idx + 1}:** {q_text}")
