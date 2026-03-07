@@ -96,6 +96,13 @@ with col1:
 with col2:
     st.subheader("🕹️ Controls")
     if st.button("⏭️ Next Question", use_container_width=True):
-        st.success("Broadcasted!")
+    # 1. Update your local state
+    st.session_state.q_index = st.session_state.get('q_index', 0) + 1
+    
+    # 2. Update the Google Sheet so players see the change
+    state_update = pd.DataFrame([[st.session_state.q_index]], columns=["CurrentIndex"])
+    conn.update(worksheet="Game_State", data=state_update)
+    
+    st.success("Question Updated for all Players!")
     if st.button("⏹️ End Game", use_container_width=True):
         st.warning("Finalizing...")
