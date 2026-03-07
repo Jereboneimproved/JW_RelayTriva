@@ -28,29 +28,30 @@ player_name = st.text_input("Enter Your Name", key="p_name")
 selected_team = st.radio("Select Your Team", ["Team A", "Team B"], horizontal=True)
 player_answer = st.text_input("Type your answer here...", key="p_ans")
 
-# 4. APPEND-ONLY SUBMISSION LOGIC
+# 4. DIRECT ROW APPEND (Prevents Overwriting & Schema Errors)
 if st.button("SUBMIT ANSWER", use_container_width=True):
     if player_name and player_answer:
-        # Create just the single new row
-        new_entry = pd.DataFrame([{
-            "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "Player": player_name,
-            "Team": selected_team,
-            "Answer": player_answer,
-            "IsCorrect": "" 
-        }])
-        
         try:
-            # The 'append' method is much safer for multiple users
-            conn.create(
-                worksheet="Submissions", 
-                data=new_entry, 
-                if_exists="append"
-            )
+            # 1. Access the underlying gspread client directly
+            client = conn.client
+            
+            # 2. Open the specific worksheet
+            # Make sure your spreadsheet name matches exactly (e.g., "Trivia_Master")
+            sh = client.open("Trivia_Master") 
+            worksheet = sh.worksheet("Submissions")
+            
+            # 3. Create a simple list of your data
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+            row_to_add = [timestamp, player_name, selected_team, player_answer, ""]
+            
+            # 4. Append the row directly to the bottom
+            worksheet.append_row(row_to_add)
             
             st.success(f"Sent! Good luck, {player_name}.")
             st.balloons()
+            
         except Exception as e:
-            st.error("Submission failed. Please try again.")
+            # This will show you exactly why it's failing if it happens again
+            st.error(f"Submission Error: {e}")
     else:
         st.warning("Please fill out both name and answer!")
