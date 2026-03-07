@@ -2,7 +2,6 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import plotly.express as px
-import random
 
 # 1. PAGE CONFIG
 st.set_page_config(page_title="Zion Game: Host", layout="wide")
@@ -17,8 +16,10 @@ def load_master_questions(conn):
         df = conn.read(worksheet="Trivia_Master")
         if df.empty:
             return []
+        # Standardize column names to lowercase to avoid KeyErrors
+        df.columns = [str(c).strip().lower() for c in df.columns]
         return df.to_dict('records')
-    except Exception as e:
+    except Exception:
         return None
 
 # 4. SIDEBAR CONFIG
@@ -31,7 +32,7 @@ with st.sidebar:
         conn = st.connection("gsheets", type=GSheetsConnection)
         state_update = pd.DataFrame([[0]], columns=["CurrentIndex"])
         conn.update(worksheet="Game_State", data=state_update)
-        empty_df = pd.DataFrame(columns=["Timestamp", "Player", "Team", "Answer"])
+        empty_df = pd.DataFrame(columns=["timestamp", "player", "team", "answer"])
         conn.create(worksheet="Submissions", data=empty_df)
         st.session_state.q_index = 0
         st.rerun()
@@ -46,12 +47,14 @@ def live_dashboard():
     st.subheader("📊 Live Team Standings")
     try:
         live_scores = conn.read(worksheet="Scores")
+        # Ensure column names are clean
+        live_scores.columns = [str(c).strip() for c in live_scores.columns]
         fig = px.bar(live_scores, x='Team', y='TotalPoints', color='TotalPoints', 
                      color_continuous_scale='Viridis', text_auto='.2s')
         fig.update_layout(template="plotly_dark", height=350)
         st.plotly_chart(fig, key="leaderboard_chart")
     except:
-        st.warning("⚠️ Cannot find 'Scores' tab. Please check your Google Sheet.")
+        st.warning("⚠️ Checking 'Scores' tab...")
 
     # --- LIVE PLAYER FEED ---
     st.divider()
@@ -70,6 +73,7 @@ def live_dashboard():
     st.subheader("🏆 Scoring Station")
     try:
         scores_df = conn.read(worksheet="Scores")
+        scores_df.columns = [str(c).strip() for c in scores_df.columns]
         col_s1, col_s2, col_s3 = st.columns(3)
         
         with col_s1:
@@ -84,7 +88,7 @@ def live_dashboard():
                 st.toast(f"Awarded {points_to_add} to {target_team}!")
                 st.rerun()
     except:
-        st.error("Check 'Scores' tab headers: 'Team' and 'TotalPoints'")
+        st.error("Check 'Scores' tab for 'Team' and 'TotalPoints' columns.")
 
 live_dashboard()
 
@@ -97,15 +101,19 @@ with col1:
     questions = load_master_questions(conn)
     
     if questions is None:
-        st.error("🚨 Error: Could not find 'Trivia_Master' tab. Check spelling!")
+        st.error("🚨 Error: Could not find 'Trivia_Master' tab.")
     elif len(questions) == 0:
         st.warning("⚠️ 'Trivia_Master' tab is empty.")
     else:
         idx = st.session_state.q_index
         if idx < len(questions):
             curr_q = questions[idx] 
-            st.info(f"**Question {idx + 1}:** {curr_q['Question']}")
-            st.write(f"**Correct Answer:** {curr_q['Answer']}")
+            # We lowercase the keys here to match our standardized columns
+            q_text = curr_q.get('question', 'Column "Question" not found')
+            a_text = curr_q.get('answer', 'Column "Answer" not found')
+            
+            st.info(f"**Question {idx + 1}:** {q_text}")
+            st.write(f"**Correct Answer:** {a_text}")
         else:
             st.success("🎉 All questions completed!")
 
