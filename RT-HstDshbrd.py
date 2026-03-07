@@ -1,11 +1,12 @@
-st.logo("https://your-logo-url.com") # Optional: Add your Zion logo here!
-st.fragment(run_every=5) # This tells Streamlit to refresh the data every 5 seconds
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import plotly.express as px
 import time
 import random  
+
+st.logo("https://your-logo-url.com") # Optional: Add your Zion logo here!
+st.fragment(run_every=5) # This tells Streamlit to refresh the data every 5 seconds
 
 def load_master_questions():
     # 1. Establish connection to your Google Sheet
