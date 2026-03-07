@@ -28,25 +28,20 @@ player_name = st.text_input("Enter Your Name", key="p_name")
 selected_team = st.radio("Select Your Team", ["Team A", "Team B"], horizontal=True)
 player_answer = st.text_input("Type your answer here...", key="p_ans")
 
-# 4. DIRECT ROW APPEND (The Ultimate Fix)
+# 4. THE ULTIMATE APPEND FIX (Using run_script)
 if st.button("SUBMIT ANSWER", use_container_width=True):
     if player_name and player_answer:
         try:
-            # 1. Get the RAW gspread client from the connection
-            # We use ._instance to get to the underlying 'open' method
-            raw_client = conn._instance
-            
-            # 2. Open your specific spreadsheet and tab
-            # Ensure "Trivia_Master" is the exact name of your Google Sheet
-            sh = raw_client.open("Trivia_Master") 
-            worksheet = sh.worksheet("Submissions")
-            
-            # 3. Create the row data
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-            row_to_add = [timestamp, player_name, selected_team, player_answer, ""]
-            
-            # 4. Direct Append (This avoids all "overwriting" issues)
-            worksheet.append_row(row_to_add)
+            # 1. Define the append operation
+            def append_player_row(client):
+                # Ensure "Trivia_Master" matches your Google Sheet name exactly
+                sh = client.open("Trivia_Master")
+                ws = sh.worksheet("Submissions")
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+                ws.append_row([timestamp, player_name, selected_team, player_answer, ""])
+
+            # 2. Tell the connection to run this specific script
+            conn.run_script(append_player_row)
             
             st.success(f"Sent! Good luck, {player_name}.")
             st.balloons()
@@ -54,4 +49,4 @@ if st.button("SUBMIT ANSWER", use_container_width=True):
         except Exception as e:
             st.error(f"Submission Error: {e}")
     else:
-        st.warning("Please fill out both name and answer!")
+        st.warning("Please enter your name and an answer!")
