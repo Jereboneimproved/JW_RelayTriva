@@ -44,6 +44,31 @@ with st.sidebar:
         st.session_state.game_active = True
         st.toast("Game is now Live!")
 
+# --- ADD THIS TO YOUR HOST DASHBOARD ---
+
+def get_latest_submissions():
+    try:
+        # Connect to the 'Submissions' tab
+        sub_conn = st.connection("gsheets", type=GSheetsConnection)
+        sub_df = sub_conn.read(worksheet="Submissions")
+        return sub_df
+    except:
+        return pd.DataFrame()
+
+# --- DISPLAY LOGIC ---
+st.subheader("📥 Live Player Feed")
+submissions = get_latest_submissions()
+
+if not submissions.empty:
+    # Show the last 5 answers so you can see who buzzed in
+    st.table(submissions.tail(5))
+else:
+    st.info("Waiting for players to buzz in...")
+
+# Optional: Add a refresh button or auto-rerun
+if st.button("Check for New Answers"):
+    st.rerun()
+
 # --- 3. LIVE LEADERBOARD (BAR CHART) ---
 # We simulate live scores for 15 teams to show scalability
 st.subheader("📊 Live Team Standings")
