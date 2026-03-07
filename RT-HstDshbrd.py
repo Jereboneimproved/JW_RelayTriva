@@ -1,4 +1,22 @@
 import streamlit as st
+from streamlit_gsheets import GSheetsConnection
+
+def load_master_questions():
+    # 1. Establish connection to your Google Sheet
+    # This uses the "Service Account" we discussed
+    conn = st.connection("gsheets", type=GSheetsConnection)
+    
+    # 2. Read the data into a Dataframe
+    # 'Trivia_Master' is the name of the worksheet tab
+    df = conn.read(worksheet="Trivia_Master")
+    
+    # 3. Convert to a list of dictionaries for easier game logic
+    return df.to_dict('records')
+
+# --- USAGE ---
+# questions = load_master_questions()
+# first_q = questions[0]['Question']
+import streamlit as st
 import pandas as pd
 import plotly.express as px
 import time
