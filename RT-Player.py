@@ -4,28 +4,28 @@ import pandas as pd
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
 
-"""
-GUIDE TO THE AUTO-REFRESH LIMIT:
-In the st_autorefresh function, the limit parameter acts as a safety fuse for your application.
-Specifically, limit=1000 means the page is allowed to automatically refresh itself 1,000 times before it stops.
 
-🛡️ Why is the Limit Necessary?
-- Browser Protection: If you left a tab open on your monitor overnight without a limit, the app would keep 
-  "pinging" Google Sheets forever. This could eventually crash the browser tab or eat up unnecessary data.
-- API Quota Management: Since you are using a 20-second interval (20000ms), a limit of 1000 gives you 
-  about 5.5 hours of continuous live gameplay per session.
-- The Math: 1000 refreshes x 20 seconds = 20,000 seconds (roughly 333 minutes).
-- Cost/Resource Control: For hosted apps on Streamlit Cloud, it prevents "runaway" apps from consuming 
-  server resources indefinitely if a user forgets to close the window.
+#GUIDE TO THE AUTO-REFRESH LIMIT:
+#In the st_autorefresh function, the limit parameter acts as a safety fuse for your application.
+#Specifically, limit=1000 means the page is allowed to automatically refresh itself 1,000 times before it stops.
 
-🚦 What happens when the limit is reached?
-Once the counter hits 1,000, the "heartbeat" simply stops. The player's screen will stay on the current 
-question and will not check for updates again until the player manually refreshes their browser page.
+#🛡️ Why is the Limit Necessary?
+#- Browser Protection: If you left a tab open on your monitor overnight without a limit, the app would keep 
+#  "pinging" Google Sheets forever. This could eventually crash the browser tab or eat up unnecessary data.
+#- API Quota Management: Since you are using a 20-second interval (20000ms), a limit of 1000 gives you 
+#  about 5.5 hours of continuous live gameplay per session.
+#- The Math: 1000 refreshes x 20 seconds = 20,000 seconds (roughly 333 minutes).
+#- Cost/Resource Control: For hosted apps on Streamlit Cloud, it prevents "runaway" apps from consuming 
+#  server resources indefinitely if a user forgets to close the window.
 
-💡 Recommendation for Zion Trivia:
-For a standard trivia night, 1,000 is a very safe "buffer." Even if your event lasts 3 hours, you’ll only 
-use about 540 of those refreshes.
-"""
+#🚦 What happens when the limit is reached?
+#Once the counter hits 1,000, the "heartbeat" simply stops. The player's screen will stay on the current 
+#question and will not check for updates again until the player manually refreshes their browser page.
+#
+#💡 Recommendation for Zion Trivia:
+#For a standard trivia night, 1,000 is a very safe "buffer." Even if your event lasts 3 hours, you’ll only 
+#use about 540 of those refreshes.
+#"""
 
 st.set_page_config(page_title="Zion Trivia: Player Portal", layout="centered")
 
