@@ -89,6 +89,7 @@ if st.button("SUBMIT ANSWER", use_container_width=True):
     if player_name and player_answer:
         with st.spinner("Sending to scoreboard..."):
             try:
+                # Append to Submissions
                 existing_data = conn.read(worksheet="Submissions", ttl=2) 
                 
                 new_row = pd.DataFrame([{
@@ -96,7 +97,7 @@ if st.button("SUBMIT ANSWER", use_container_width=True):
                     "Player": player_name,
                     "Team": selected_team,
                     "Answer": player_answer,
-                    "IsCorrect": ""
+                    "IsCorrect": "" # Left blank for your Apps Script
                 }])
                 
                 updated_df = pd.concat([existing_data, new_row], ignore_index=True)
@@ -105,13 +106,12 @@ if st.button("SUBMIT ANSWER", use_container_width=True):
                 st.success(f"Submitted! Good luck, {player_name}.")
                 st.balloons()
                 
+                # Use session state to clear the box
                 st.session_state.p_ans_input = "" 
                 st.rerun() 
                 
             except Exception:
                 st.error("Google is busy. Please wait 5 seconds and click Submit again.")
-    else:
-        st.warning("Both name and answer are required!")
 
 # --- 7. RECENT SUBMISSIONS FEED ---
 st.divider()
