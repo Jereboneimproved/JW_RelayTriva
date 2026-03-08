@@ -7,8 +7,8 @@ from streamlit_autorefresh import st_autorefresh
 st.set_page_config(page_title="Zion Trivia: Player Portal", layout="centered")
 
 # --- 0. AUTO-REFRESH TRIGGER ---
-# Reruns every 15 seconds to check for question changes and update the submission log
-st_autorefresh(interval=15000, limit=1000, key="zion_heartbeat")
+# Reruns every 20 seconds to check for question changes and update the submission log
+st_autorefresh(interval=20000, limit=1000, key="zion_heartbeat")
 
 # --- 1. INITIALIZE SESSION STATE ---
 if 'teams_list' not in st.session_state:
