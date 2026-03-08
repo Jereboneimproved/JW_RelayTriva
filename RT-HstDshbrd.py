@@ -87,9 +87,10 @@ def live_dashboard():
         else:
             st.info("Waiting for answers...")
 
-        # --- QUESTION MANAGEMENT ---
+# --- QUESTION MANAGEMENT ---
         st.divider()
         col_q1, col_q2 = st.columns([2, 1])
+        
         with col_q1:
             st.subheader("🎯 Active Question")
             if not master_df.empty:
@@ -98,11 +99,42 @@ def live_dashboard():
                     q_text = master_df.iloc[idx, 1] 
                     a_text = master_df.iloc[idx, 2]
                     st.info(f"**Question {idx + 1}:** {q_text}")
-                    st.success(f"**Answer:** {a_text}")
+                    
+                    # FIX: Only show the answer if the state is set to True
+                    if st.session_state.reveal_answer:
+                        st.success(f"**Answer:** {a_text}")
+                    else:
+                        st.warning("**Answer:** [ HIDDEN ]")
                 else:
                     st.success("🎉 Final Scoreboard Ready!")
+
         with col_q2:
             st.subheader("🕹️ Controls")
+            
+            # TIMER CONTROL
+            timer_set = st.number_input("Set Timer (Seconds)", min_value=0, max_value=300, value=60, step=10)
+            
+            if st.button("⏲️ START TIMER", use_container_width=True):
+                # This now uses 'conn' which we defined at the top of the script
+                state_update = pd.DataFrame([[st.session_state.q_index, timer_set]], columns=["CurrentIndex", "Timer"])
+                conn.update(worksheet="Game_State", data=state_update)
+                st.toast(f"Timer set to {timer_set}s!")
+
+            st.divider()
+
+            # The Reveal Button
+            reveal_label = "👁️ Hide Answer" if st.session_state.reveal_answer else "👁️ Reveal Answer"
+            if st.button(reveal_label, use_container_width=True):
+                st.session_state.reveal_answer = not st.session_state.reveal_answer
+                st.rerun()
+
+            if st.button("⏭️ Next Question", use_container_width=True, key="next_q_main"):
+                st.session_state.q_index += 1
+                st.session_state.reveal_answer = False 
+                # Reset Timer to 0 for the next question
+                state_update = pd.DataFrame([[st.session_state.q_index, 0]], columns=["CurrentIndex", "Timer"])
+                conn.update(worksheet="Game_State", data=state_update)
+                st.rerun()
             
             # --- TIMER CONTROL ---
             timer_set = st.number_input("Set Timer (Seconds)", min_value=0, max_value=300, value=60, step=10)
