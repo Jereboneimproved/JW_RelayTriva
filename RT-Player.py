@@ -55,19 +55,20 @@ st.title("🔴 Zion Trivia: Player Portal")
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# 3. FETCH GAME STATE
+# --- 3. FETCH GAME STATE ---
+# This belongs in your .py file, NOT in Google Apps Script (Code.gs)
 try:
-    state_df = conn.read(worksheet="Game_State", ttl=15)
+    # We use a 5-second TTL to keep the timer "snappy"
+    state_df = conn.read(worksheet="Game_State", ttl=5) 
     current_idx = int(state_df.iloc[0, 0])
+    
+    # Check if column B (Timer) exists before reading it
+    time_remaining = int(state_df.iloc[0, 1]) if state_df.shape[1] > 1 else 0
+    
     questions_df = conn.read(worksheet="Trivia_Master", ttl=300)
     
-    if not questions_df.empty and current_idx < len(questions_df):
-        current_q = questions_df.iloc[current_idx, 1] 
-        st.subheader(f"📋 Question #{current_idx + 1}")
-        st.info(f"{current_q}")
-    else:
-        st.success("Stand by for the next question or final results!")
-except Exception:
+    # ... rest of your display logic ...
+except Exception as e:
     st.info("Syncing with Host...")
 
 # 4. PERSISTENT TEAM FETCH
