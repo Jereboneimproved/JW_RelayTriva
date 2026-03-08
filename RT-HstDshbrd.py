@@ -148,10 +148,10 @@ def live_dashboard():
                 conn.update(worksheet="Game_State", data=state_update)
                 st.rerun()
 
-        except Exception as e:
-        if "429" in str(e):
-            st.error("Google is cooling down. Refreshing in 30s...")
-        else:
-            st.error(f"Sync Error: {e}")
+    except Exception as e:
+            if "429" in str(e):
+                st.error("Google is cooling down. Refreshing in 30s...")
+            else:
+                st.error(f"Sync Error: {e}")
 
 live_dashboard()
