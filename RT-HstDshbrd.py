@@ -14,48 +14,37 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 # 3. SIDEBAR CONFIG
 with st.sidebar:
-    st.header("Event Configuration")
-    # Note: These sliders are visual; the actual team names are now driven by your Sheets 'Zion Admin' menu
-    num_teams = st.slider("Number of Teams (Display)", 1, 15, 2)
-    max_players = st.slider("Max Players per Team", 1, 50, 10) 
+    st.header("🛡️ Event Admin")
+    st.info("Use the 'Zion Admin' menu in Google Sheets to Setup Teams or Reset the Session.")
     
     st.divider()
     
     if st.button("🚀 START LIVE SESSION", use_container_width=True, key="start_session_btn"):
         st.balloons()
-        st.success("Session Started!")
+        st.success("Session Active!")
 
     st.divider()
-    
-    if st.button("🗑️ Reset Game & Submissions", use_container_width=True, key="reset_game_sidebar"):
-        # Reset Game State index to 0
-        state_update = pd.DataFrame([[0]], columns=["CurrentIndex"])
-        conn.update(worksheet="Game_State", data=state_update)
-        
-        # Reset Scores to 0
-        scores_df = conn.read(worksheet="Scores", ttl=0)
-        scores_df.iloc[:, 1] = 0 
-        conn.update(worksheet="Scores", data=scores_df)
-        
-        # Clear Submissions (Keep Headers)
-        empty_df = pd.DataFrame(columns=["Timestamp", "Player", "Team", "Answer", "IsCorrect"])
-        conn.update(worksheet="Submissions", data=empty_df)
-        
-        st.session_state.q_index = 0
-        st.toast("Game reset successfully!")
-        st.rerun()
+    # This button now simply syncs the local app with the Sheet's reset state
+    if st.button("🔄 Sync with Sheet Reset", use_container_width=True, key="sync_reset"):
+        try:
+            state_df = conn.read(worksheet="Game_State", ttl=0)
+            st.session_state.q_index = int(state_df.iloc[0, 0])
+            st.toast("Synced with Spreadsheet!")
+            st.rerun()
+        except:
+            st.error("Could not sync. Check sheet connection.")
 
 # 4. MAIN UI
 st.title("🛡️ Zion Game: Host Command Center")
 
-# Refresh every 20 seconds to manage Google Quota
-@st.fragment(run_every=20)
+# Refresh every 30 seconds to stay safely under Google's 60-req/min quota
+@st.fragment(run_every=30)
 def live_dashboard():
     try:
-        # Pull data with a 10s TTL to prevent "double-dipping" quota on every click
+        # Pull data with a 10s TTL buffer
         scores_df = conn.read(worksheet="Scores", ttl=10)
         subs_df = conn.read(worksheet="Submissions", ttl=10)
-        master_df = conn.read(worksheet="Trivia_Master", ttl=60) # Questions rarely change
+        master_df = conn.read(worksheet="Trivia_Master", ttl=300)
 
         # --- LIVE LEADERBOARD ---
         st.subheader("📊 Live Team Standings")
@@ -67,30 +56,12 @@ def live_dashboard():
 
         # --- LIVE PLAYER FEED ---
         st.divider()
-        st.subheader("📥 Live Player Feed")
+        st.subheader("📥 Recent Submissions")
         if not subs_df.empty:
-            # Displays the last 10 entries
-            st.table(subs_df.tail(10)) 
+            # We use st.dataframe here for a cleaner, scrollable view
+            st.dataframe(subs_df.tail(15), use_container_width=True)
         else:
-            st.info("Waiting for players to buzz in...")
-
-        # --- SCORING STATION ---
-        st.divider()
-        st.subheader("🏆 Scoring Station")
-        if not scores_df.empty:
-            col_s1, col_s2, col_s3 = st.columns(3)
-            with col_s1:
-                target_team = st.selectbox("Select Team", scores_df.iloc[:, 0].unique(), key="score_team_select")
-            with col_s2:
-                points_to_add = st.number_input("Points", value=100, step=50, key="score_points_input")
-            with col_s3:
-                st.write(" ") 
-                if st.button("➕ Award Points", use_container_width=True, key="award_points_btn"):
-                    # Math handled here for manual overrides; Apps Script handles the "Yes/No" scoring
-                    scores_df.loc[scores_df.iloc[:, 0] == target_team, scores_df.columns[1]] += points_to_add
-                    conn.update(worksheet="Scores", data=scores_df)
-                    st.toast(f"Awarded {points_to_add} to {target_team}!")
-                    st.rerun()
+            st.info("Waiting for answers...")
 
         # --- QUESTION MANAGEMENT ---
         st.divider()
@@ -103,12 +74,12 @@ def live_dashboard():
                     q_text = master_df.iloc[idx, 1] 
                     a_text = master_df.iloc[idx, 2]
                     st.info(f"**Question {idx + 1}:** {q_text}")
-                    st.success(f"**Correct Answer:** {a_text}")
+                    st.success(f"**Answer:** {a_text}")
                 else:
-                    st.success("🎉 All questions completed!")
+                    st.success("🎉 Final Scoreboard Ready!")
         with col_q2:
             st.subheader("🕹️ Controls")
-            if st.button("⏭️ Next Question", use_container_width=True, key="next_q_button_main"):
+            if st.button("⏭️ Next Question", use_container_width=True, key="next_q_main"):
                 st.session_state.q_index += 1
                 state_update = pd.DataFrame([[st.session_state.q_index]], columns=["CurrentIndex"])
                 conn.update(worksheet="Game_State", data=state_update)
@@ -116,9 +87,8 @@ def live_dashboard():
 
     except Exception as e:
         if "429" in str(e):
-            st.error("Google's Quota exceeded. Waiting 30 seconds to reset...")
+            st.error("Google is cooling down. Refreshing in 30s...")
         else:
             st.error(f"Sync Error: {e}")
 
-# Call the fragment
 live_dashboard()
