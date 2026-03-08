@@ -123,13 +123,14 @@ def live_dashboard():
 
             st.divider()
 
-            # The Reveal Button
+# 1. Update the Reveal Button
             reveal_label = "👁️ Hide Answer" if st.session_state.reveal_answer else "👁️ Reveal Answer"
-            if st.button(reveal_label, use_container_width=True):
+            if st.button(reveal_label, use_container_width=True, key="reveal_btn_main"):
                 st.session_state.reveal_answer = not st.session_state.reveal_answer
                 st.rerun()
 
-            if st.button("⏭️ Next Question", use_container_width=True, key="next_q_main"):
+            # 2. Update the Next Question Button
+            if st.button("⏭️ Next Question", use_container_width=True, key="next_q_btn_main"):
                 st.session_state.q_index += 1
                 st.session_state.reveal_answer = False 
                 # Reset Timer to 0 for the next question
