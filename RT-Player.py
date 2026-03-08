@@ -55,20 +55,34 @@ st.title("🔴 Zion Trivia: Player Portal")
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# --- 3. FETCH GAME STATE ---
-# This belongs in your .py file, NOT in Google Apps Script (Code.gs)
+# 3. FETCH GAME STATE
 try:
-    # We use a 5-second TTL to keep the timer "snappy"
+    # We use a 5s TTL here so the timer feels reactive on the player monitors
     state_df = conn.read(worksheet="Game_State", ttl=5) 
     current_idx = int(state_df.iloc[0, 0])
     
-    # Check if column B (Timer) exists before reading it
+    # NEW: Pull the Timer value from Column B (Index 1)
+    # If the timer is 0, it means the host hasn't started it yet
     time_remaining = int(state_df.iloc[0, 1]) if state_df.shape[1] > 1 else 0
     
     questions_df = conn.read(worksheet="Trivia_Master", ttl=300)
     
-    # ... rest of your display logic ...
-except Exception as e:
+    if not questions_df.empty and current_idx < len(questions_df):
+        current_q = questions_df.iloc[current_idx, 1] 
+        st.subheader(f"📋 Question #{current_idx + 1}")
+        
+        # --- NEW: DYNAMIC TIMER DISPLAY ---
+        if time_remaining > 0:
+            # Shows a warning (yellow) bar with the countdown
+            st.warning(f"⏳ **Time Remaining: {time_remaining} seconds**")
+            if time_remaining <= 10:
+                # Changes the vibe to urgent when time is almost up
+                st.error("🚨 HURRY! Submissions closing soon!")
+        
+        st.info(f"{current_q}")
+    else:
+        st.success("Stand by for the next question or final results!")
+except Exception:
     st.info("Syncing with Host...")
 
 # 4. PERSISTENT TEAM FETCH
