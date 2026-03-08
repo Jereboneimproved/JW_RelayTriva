@@ -24,7 +24,26 @@ with st.sidebar:
         st.success("Session Active!")
 
     st.divider()
-    # This button now simply syncs the local app with the Sheet's reset state
+
+    # --- NEW: CLEAR SUBMISSIONS BUTTON ---
+    # This wipes the 'Submissions' worksheet but keeps the headers
+    if st.button("🗑️ CLEAR ALL SUBMISSIONS", use_container_width=True, key="clear_subs_btn"):
+        try:
+            # We create an empty DataFrame with just your 5 headers
+            headers = ["Timestamp", "Player", "Team", "Answer", "IsCorrect"]
+            empty_df = pd.DataFrame(columns=headers)
+            
+            # This overwrites the sheet with just the headers
+            conn.update(worksheet="Submissions", data=empty_df)
+            
+            st.toast("Submissions Cleared!")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error clearing sheet: {e}")
+
+    st.divider()
+    
+    # This button syncs the local app with the Sheet's reset state
     if st.button("🔄 Sync with Sheet Reset", use_container_width=True, key="sync_reset"):
         try:
             state_df = conn.read(worksheet="Game_State", ttl=0)
