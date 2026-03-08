@@ -119,7 +119,7 @@ def live_dashboard():
                     st.success(f"**Answer:** {a_text}")
                 else:
                     st.success("🎉 Final Scoreboard Ready!")
-with col_q2:
+        with col_q2:
             st.subheader("🕹️ Controls")
             
             # --- TIMER CONTROL ---
