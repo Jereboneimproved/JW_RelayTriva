@@ -9,9 +9,49 @@ st.set_page_config(page_title="Zion Game: Host", layout="wide")
 # 2. INITIALIZE SESSION STATE
 if 'q_index' not in st.session_state:
     st.session_state.q_index = 0
+# NEW: Track whether the answer is currently revealed
+if 'reveal_answer' not in st.session_state:
+    st.session_state.reveal_answer = False
 
-conn = st.connection("gsheets", type=GSheetsConnection)
+# ... [Keep Sidebar and Leaderboard code the same] ...
 
+# --- QUESTION MANAGEMENT ---
+st.divider()
+col_q1, col_q2 = st.columns([2, 1])
+with col_q1:
+    st.subheader("🎯 Active Question")
+    if not master_df.empty:
+        idx = st.session_state.q_index
+        if idx < len(master_df):
+            q_text = master_df.iloc[idx, 1] 
+            a_text = master_df.iloc[idx, 2]
+            st.info(f"**Question {idx + 1}:** {q_text}")
+            
+            # Use the state to decide whether to show the answer or a placeholder
+            if st.session_state.reveal_answer:
+                st.success(f"**Answer:** {a_text}")
+            else:
+                st.warning("**Answer:** [ HIDDEN ]")
+        else:
+            st.success("🎉 Final Scoreboard Ready!")
+
+with col_q2:
+    st.subheader("🕹️ Controls")
+    
+    # Toggle Button for Reveal
+    reveal_label = "👁️ Hide Answer" if st.session_state.reveal_answer else "👁️ Reveal Answer"
+    if st.button(reveal_label, use_container_width=True):
+        st.session_state.reveal_answer = not st.session_state.reveal_answer
+        st.rerun()
+
+    if st.button("⏭️ Next Question", use_container_width=True, key="next_q_main"):
+        st.session_state.q_index += 1
+        # Always hide the answer again when moving to a new question
+        st.session_state.reveal_answer = False 
+        
+        state_update = pd.DataFrame([[st.session_state.q_index]], columns=["CurrentIndex"])
+        conn.update(worksheet="Game_State", data=state_update)
+        st.rerun()
 # 3. SIDEBAR CONFIG
 with st.sidebar:
     st.header("🛡️ Event Admin")
