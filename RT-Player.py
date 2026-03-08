@@ -118,12 +118,22 @@ if st.button("SUBMIT ANSWER", use_container_width=True):
 # --- 7. RECENT SUBMISSIONS FEED ---
 st.divider()
 st.caption("🏁 Recent Activity (Last 5 Submissions)")
+
 try:
+    # We use a 10-second TTL here so the log feels snappy
     log_df = conn.read(worksheet="Submissions", ttl=10)
-    if not log_df.empty:
+    
+    # Check if we actually have data and the required columns
+    required_cols = ["Timestamp", "Player", "Team"]
+    
+    if not log_df.empty and all(col in log_df.columns for col in required_cols):
+        # Show the most recent 5, newest at the top
         recent_log = log_df.tail(5).iloc[::-1]
-        st.table(recent_log[["Timestamp", "Player", "Team"]])
+        st.table(recent_log[required_cols])
     else:
+        # This shows if the sheet is empty or you've just cleared it for a new game
         st.write("No submissions yet for this round.")
-except:
+except Exception:
+    # If Google is busy/cooling down, we show this quiet hint
+    st.caption("🔄 Syncing latest activity...")
     st.caption("Refreshing log...")
