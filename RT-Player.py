@@ -44,7 +44,6 @@ st.markdown(
         @keyframes blinker {{ 50% {{ opacity: 0; }} }}
     </style>
     """, 
-    unsafe_allow_stdio=False, # Standard markdown safety
     unsafe_allow_html=True
 )
 
