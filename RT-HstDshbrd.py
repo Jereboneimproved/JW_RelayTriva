@@ -111,8 +111,9 @@ def live_dashboard():
         with col_q2:
             st.subheader("🕹️ Controls")
             
-            # TIMER CONTROL
-            timer_set = st.number_input("Set Timer (Seconds)", min_value=0, max_value=300, value=60, step=10)
+# TIMER CONTROL
+            # We added key="timer_input_main" to make it unique
+            timer_set = st.number_input("Set Timer (Seconds)", min_value=0, max_value=300, value=60, step=10, key="timer_input_main")10)
             
             if st.button("⏲️ START TIMER", use_container_width=True):
                 # This now uses 'conn' which we defined at the top of the script
