@@ -34,16 +34,28 @@ try:
 except Exception as e:
     st.info("Waiting for Host to start the round...")
 
-# 2. DYNAMIC TEAM FETCH
+# 2. DYNAMIC TEAM FETCH WITH PERSISTENCE
+# We use st.session_state to "remember" the teams so the UI doesn't flicker
+if 'teams_list' not in st.session_state:
+    st.session_state.teams_list = ["Loading Teams..."]
+
 try:
+    # We still fetch from the sheet, but we save it to the session memory
     scores_df = conn.read(worksheet="Scores", ttl=60)
-    team_options = scores_df.iloc[:, 0].dropna().tolist()
+    fetched_teams = scores_df.iloc[:, 0].dropna().tolist()
+    if fetched_teams:
+        st.session_state.teams_list = fetched_teams
 except:
-    team_options = ["Team A", "Team B"]
+    # If Google is "cooling down", we keep the last successful list 
+    # instead of reverting to "Team A"
+    pass 
 
 # 3. PLAYER INPUTS
 player_name = st.text_input("Enter Your Name", key="p_name")
-selected_team = st.selectbox("Select Your Team", team_options) # Changed to selectbox for cleaner UI
+
+# Use the persistent list from memory
+selected_team = st.selectbox("Select Your Team", st.session_state.teams_list)
+
 player_answer = st.text_area("Type your answer here...", key="p_ans")
 
 # 4. SUBMISSION LOGIC
