@@ -23,9 +23,21 @@ try:
 except:
     st.info("Syncing with Host...")
 
-# 3. PLAYER INPUTS
+# 3. PLAYER INPUTS & DYNAMIC TEAM FETCH
+try:
+    # Pull the list of teams from the 'Scores' worksheet
+    scores_df = conn.read(worksheet="Scores", ttl=10)
+    # Get the names from the first column (Column A)
+    team_options = scores_df.iloc[:, 0].tolist()
+except:
+    # Fallback if the sheet can't be reached
+    team_options = ["Team A", "Team B"]
+
 player_name = st.text_input("Enter Your Name", key="p_name")
-selected_team = st.radio("Select Your Team", ["Team A", "Team B"], horizontal=True)
+
+# Now the radio button uses the list we just pulled from the sheet!
+selected_team = st.radio("Select Your Team", team_options, horizontal=True)
+
 player_answer = st.text_input("Type your answer here...", key="p_ans")
 
 # 4. THE "PULL-ADD-PUSH" STACKING LOGIC
