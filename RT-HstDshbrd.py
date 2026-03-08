@@ -15,26 +15,6 @@ if 'reveal_answer' not in st.session_state:
 
 # ... [Keep Sidebar and Leaderboard code the same] ...
 
-# --- QUESTION MANAGEMENT ---
-st.divider()
-col_q1, col_q2 = st.columns([2, 1])
-with col_q1:
-    st.subheader("🎯 Active Question")
-    if not master_df.empty:
-        idx = st.session_state.q_index
-        if idx < len(master_df):
-            q_text = master_df.iloc[idx, 1] 
-            a_text = master_df.iloc[idx, 2]
-            st.info(f"**Question {idx + 1}:** {q_text}")
-            
-            # Use the state to decide whether to show the answer or a placeholder
-            if st.session_state.reveal_answer:
-                st.success(f"**Answer:** {a_text}")
-            else:
-                st.warning("**Answer:** [ HIDDEN ]")
-        else:
-            st.success("🎉 Final Scoreboard Ready!")
-
 # 3. SIDEBAR CONFIG
 with st.sidebar:
     st.header("🛡️ Event Admin")
