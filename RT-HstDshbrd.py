@@ -7,6 +7,8 @@ import plotly.express as px
 st.set_page_config(page_title="Zion Game: Host", layout="wide")
 
 # 2. INITIALIZE SESSION STATE
+# 1.5 ESTABLISH CONNECTION
+conn = st.connection("gsheets", type=GSheetsConnection)
 if 'q_index' not in st.session_state:
     st.session_state.q_index = 0
 # NEW: Track whether the answer is currently revealed
