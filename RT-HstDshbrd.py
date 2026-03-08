@@ -44,8 +44,8 @@ with st.sidebar:
 st.title("🛡️ Zion Game: Host Command Center")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Refresh every 15 seconds to manage Google Quota
-@st.fragment(run_every=15)
+# Refresh every 20 seconds to manage Google Quota
+@st.fragment(run_every=20)
 def live_dashboard():
     try:
         # Pull all data in one trip
