@@ -37,8 +37,8 @@ with st.sidebar:
 # 4. MAIN UI
 st.title("🛡️ Zion Game: Host Command Center")
 
-# Refresh every 30 seconds to stay safely under Google's 60-req/min quota
-@st.fragment(run_every=30)
+# Refresh every 60 seconds to stay safely under Google's 60-req/min quota
+@st.fragment(run_every=60)
 def live_dashboard():
     try:
         # Pull data with a 10s TTL buffer
