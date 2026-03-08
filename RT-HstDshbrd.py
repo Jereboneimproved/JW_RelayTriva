@@ -117,32 +117,3 @@ def live_dashboard():
 
 # Call the fragment
 live_dashboard()
-
-# --- 5. QUESTION MANAGEMENT ---
-st.divider()
-col1, col2 = st.columns([2, 1])
-
-with col1:
-    st.subheader("🎯 Active Question")
-    try:
-        # Added ttl=0 for master sync
-        master_df = conn.read(worksheet="Trivia_Master", ttl=0)
-        if not master_df.empty:
-            idx = st.session_state.q_index
-            if idx < len(master_df):
-                q_text = master_df.iloc[idx, 1] 
-                a_text = master_df.iloc[idx, 2]
-                st.info(f"**Question {idx + 1}:** {q_text}")
-                st.success(f"**Correct Answer:** {a_text}")
-            else:
-                st.success("🎉 All questions completed!")
-    except Exception as e:
-        st.error(f"Sheet Error: {e}")
-
-with col2:
-    st.subheader("🕹️ Controls")
-    if st.button("⏭️ Next Question", use_container_width=True):
-        st.session_state.q_index += 1
-        state_update = pd.DataFrame([[st.session_state.q_index]], columns=["CurrentIndex"])
-        conn.update(worksheet="Game_State", data=state_update)
-        st.rerun()
